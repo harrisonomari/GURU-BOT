@@ -1,13 +1,19 @@
-import { cpus as _cpus, totalmem, freemem } from 'os'
+import { cpus as _cpus, totalmem, freemem, platform, arch, hostname, release, networkInterfaces, uptime, loadavg } from 'os'
 import util from 'util'
 import { performance } from 'perf_hooks'
 import { sizeFormatter } from 'human-readable'
+import { exec } from 'child_process'
+import { promisify } from 'util'
+
+const execAsync = promisify(exec)
+
 let format = sizeFormatter({
   std: 'JEDEC', // 'SI' (default) | 'IEC' | 'JEDEC'
   decimalPlaces: 2,
   keepTrailingZeroes: false,
   render: (literal, symbol) => `${literal} ${symbol}B`,
 })
+
 let handler = async (m, { conn, usedPrefix, command }) => {
   const chats = Object.entries(conn.chats).filter(([id, data]) => id && data.isChats)
   const groupsIn = chats.filter(([id]) => id.endsWith('@g.us')) //groups.filter(v => !v.read_only)
@@ -39,10 +45,40 @@ let handler = async (m, { conn, usedPrefix, command }) => {
       },
     }
   )
+  
   let old = performance.now()
-
   let neww = performance.now()
   let speed = neww - old
+  
+  let systemInfo = {}
+  try {
+    const { stdout: distro } = await execAsync('cat /etc/os-release | grep PRETTY_NAME | cut -d= -f2')
+    systemInfo.os = distro.replace(/"/g, '').trim() || `${platform()} ${release()}`
+  } catch {
+    systemInfo.os = `${platform()} ${release()}`
+  }
+  
+  systemInfo.arch = arch()
+  systemInfo.hostname = hostname()
+  systemInfo.cpuCores = cpus.length
+  systemInfo.cpuModel = cpus[0]?.model || 'Unknown CPU'
+  systemInfo.cpuSpeed = `${(cpu.speed / 1000).toFixed(2)} GHz`
+  systemInfo.loadAverage = loadavg().map(x => x.toFixed(2)).join(', ')
+  systemInfo.uptime = formatUptime(uptime())
+  
+  try {
+    const { stdout: diskInfo } = await execAsync('df -h / | tail -1')
+    const diskParts = diskInfo.trim().split(/\s+/)
+    if (diskParts.length >= 5) {
+      systemInfo.totalDisk = diskParts[1]
+      systemInfo.usedDisk = diskParts[2]
+      systemInfo.freeDisk = diskParts[3]
+      systemInfo.diskUsage = diskParts[4]
+    }
+  } catch {
+    systemInfo.diskInfo = 'Not available'
+  }
+  
   let who = m.quoted
     ? m.quoted.sender
     : m.mentionedJid && m.mentionedJid[0]
@@ -55,47 +91,100 @@ let handler = async (m, { conn, usedPrefix, command }) => {
   let user = global.db.data.users[who]
 
   let infobt = `
-≡ *INFO BOT*
-  
-*STATE*
-▢ *${groupsIn.length}* GROUP CHATS
-▢ *${groupsIn.length}* united groups
-▢ *${groupsIn.length - groupsIn.length}* abandoned groups
-▢ *${chats.length - groupsIn.length}* private chats
-▢ *${chats.length}* Total Chats
+╭━━━━━━━━━━━━━━━━╮
+┃     *🤖 GURU Ai INFO 🤖*
+╰━━━━━━━━━━━━━━━━╯
 
-*≡ OWNER*
-  *GURU*
-▢ Instagram :
-  • https://instagram.com/asli_guru69
-▢ GitHub :
-  • https://github.com/Guru322
-▢ Telegram : 
-  • t.me/i_want_to_be_isekaied (GURU) 
-▢ YouTube : 
-  • https://youtube.com/@Asliguru
+╭━━━━━━━━━━━━━━━━╮
+┃     *CHAT STATISTICS*
+┃ ✧ Groups: *${groupsIn.length}*
+┃ ✧ Private Chats: *${chats.length - groupsIn.length}*
+┃ ✧ Total Chats: *${chats.length}*
+╰━━━━━━━━━━━━━━━━╯
 
- *≡ S E R V E R*
-*🛑 RAM:* ${format(totalmem() - freemem())} / ${format(totalmem())}
-*🔵 FreeRAM:* ${format(freemem())}
+╭━━━━━━━━━━━━━━━━╮
+┃     *SYSTEM INFORMATION*
+┃ ✧ OS: *${systemInfo.os}*
+┃ ✧ Architecture: *${systemInfo.arch}*
+┃ ✧ Hostname: *${systemInfo.hostname}*
+┃ ✧ Uptime: *${systemInfo.uptime}*
+┃ ✧ CPU Model: *${systemInfo.cpuModel}*
+┃ ✧ CPU Cores: *${systemInfo.cpuCores}*
+┃ ✧ CPU Speed: *${systemInfo.cpuSpeed}*
+┃ ✧ Load Average: *${systemInfo.loadAverage}*
+╰━━━━━━━━━━━━━━━━╯
 
-*≡  NodeJS memory *
+╭━━━━━━━━━━━━━━━━╮
+┃     *STORAGE INFORMATION*
+┃ ✧ RAM: *${format(totalmem() - freemem())}* / *${format(totalmem())}*
+┃ ✧ Free RAM: *${format(freemem())}*
+${systemInfo.totalDisk ? `┃ ✧ Disk: *${systemInfo.usedDisk}* / *${systemInfo.totalDisk}* (*${systemInfo.diskUsage}*)` : ''}
+╰━━━━━━━━━━━━━━━━╯
+
+╭━━━━━━━━━━━━━━━━╮
+┃     *NODEJS MEMORY USAGE*
 ${
-  '```' +
   Object.keys(used)
     .map(
       (key, _, arr) =>
-        `${key.padEnd(Math.max(...arr.map(v => v.length)), ' ')}: ${format(used[key])}`
+        `┃ ✧ ${key.padEnd(Math.max(...arr.map(v => v.length)), ' ')}: ${format(used[key])}`
     )
-    .join('\n') +
-  '```'
+    .join('\n')
 }
-`
-  conn.sendFile(m.chat, pp, 'prefil.jpg', infobt, m, false, { mentions: [who] })
-  m.react(done)
+╰━━━━━━━━━━━━━━━━╯
+
+╭━━━━━━━━━━━━━━━━╮
+┃     *OWNER*
+┃ ✧ GURU
+┃ ✧ Contact owner for more information.
+╰━━━━━━━━━━━━━━━━╯`
+
+  await conn.sendMessage(m.chat, {
+    text: infobt,
+    footer: '© GURU Ai 2025',
+    buttons: [
+      {
+        buttonId: `${usedPrefix}alive`,
+        buttonText: {
+          displayText: '📜 ALIVE'
+        },
+        type: 1
+      },
+      {
+        buttonId: `${usedPrefix}ping`,
+        buttonText: {
+          displayText: '🏓 PING'
+        },
+        type: 1
+      },
+      {
+        buttonId: `${usedPrefix}runtime`,
+        buttonText: {
+          displayText: '⌛ RUNTIME'
+        },
+        type: 1
+      }
+    ],
+    headerType: 1,
+    viewOnce: true,
+    mentions: [who]
+  }, { quoted: m })
+  
+  m.react('✅')
 }
+
+function formatUptime(seconds) {
+  const days = Math.floor(seconds / (3600 * 24))
+  const hours = Math.floor((seconds % (3600 * 24)) / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  const secs = Math.floor(seconds % 60)
+  
+  return `${days}d ${hours}h ${minutes}m ${secs}s`
+}
+
 handler.help = ['info']
 handler.tags = ['main']
 handler.command = ['info', 'infobot', 'botinfo']
+handler.desc = 'Display bot information, system stats, and user info'
 
 export default handler

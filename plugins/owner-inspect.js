@@ -1,4 +1,4 @@
-import * as baileys from '@whiskeysockets/baileys'
+import * as baileys from 'baileys-pro'
 
 let handler = async (m, { conn, text }) => {
   let [, code] = text.match(/chat\.whatsapp\.com\/(?:invite\/)?([0-9A-Za-z]{20,24})/i) || []
@@ -24,6 +24,9 @@ let handler = async (m, { conn, text }) => {
 }
 
 handler.command = /^(inspect)$/i
+handler.desc = 'Get group metadata from a group link'
+handler.tags = ['owner']
+handler.help = ['inspect <group link>']
 
 export default handler
 

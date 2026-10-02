@@ -1,5 +1,4 @@
 import { createHash } from 'crypto'
-import { canLevelUp, xpRange } from '../lib/levelling.js'
 
 let handler = async (m, { conn, usedPrefix, command }) => {
   let who = m.quoted
@@ -13,36 +12,20 @@ let handler = async (m, { conn, usedPrefix, command }) => {
   let pp = await conn.profilePictureUrl(who, 'image').catch(_ => './Guru.jpg')
   let user = global.db.data.users[who]
   let about = ((await conn.fetchStatus(who).catch(console.error)) || {}).status || ''
-  let { name, exp, credit, lastclaim, registered, regTime, age, level, role, wealth, warn } =
-    global.db.data.users[who]
-  let { min, xp, max } = xpRange(user.level, global.multiplier)
+  let { name, warn, registered, regTime, age } = global.db.data.users[who]
   let username = conn.getName(who)
-  let math = max - xp
-  let prem = global.prems.includes(who.split`@`[0])
-  let sn = createHash('md5').update(who).digest('hex')
-
-  // • @${who.replace(/@.+/, '')}
   let str = `*🪪 Name:* ${username}${about ? '\n\n 🎌 *Bio:* ' + about : ''}
 
-*⚠️ Warnings:* ${warn}/${maxwarn}
-
-*💰 Gold :* ${credit}
-
-*✨ Level* : ${level}
-
-*⬆️ XP* : Total ${exp} (${user.exp - min} / ${xp})\n${math <= 0 ? `Ready for *${usedPrefix}levelup*` : `*${math}xp* missing to level up`}
-
-*🏆 Rank:* ${role}
+*⚠️ Warnings:* ${warn}
 
 *📇 Registered :* ${registered ? 'Yes' : 'No'}
-
-*⭐ Premium* : ${prem ? 'Yes' : 'No'}
 `
   conn.sendFile(m.chat, pp, 'profil.jpg', str, m, false, { mentions: [who] })
-  m.react(done)
+  m.react('👍')
 }
 handler.help = ['profile']
 handler.tags = ['group']
 handler.command = ['profile']
+handler.desc = 'View your profile or the profile of a tagged user'
 
 export default handler

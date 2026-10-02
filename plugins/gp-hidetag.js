@@ -1,5 +1,5 @@
-import MessageType from '@whiskeysockets/baileys'
-import { generateWAMessageFromContent } from '@whiskeysockets/baileys'
+import MessageType from 'baileys-pro'
+import { generateWAMessageFromContent } from 'baileys-pro'
 
 let handler = async (m, { conn, text, participants }) => {
   let users = participants.map(u => conn.decodeJid(u.id))
@@ -30,6 +30,7 @@ let handler = async (m, { conn, text, participants }) => {
 handler.help = ['hidetag']
 handler.tags = ['group']
 handler.command = ['hidetag', 'notify']
+handler.desc = 'Send a message to all group members without tagging them'
 handler.group = true
 handler.admin = true
 

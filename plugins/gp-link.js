@@ -1,4 +1,4 @@
-import { areJidsSameUser } from '@whiskeysockets/baileys'
+import { areJidsSameUser } from 'baileys-pro'
 let handler = async (m, { conn, args }) => {
   let group = m.chat
   if (/^[0-9]{5,16}-?[0-9]+@g\.us$/.test(args[0])) group = args[0]
@@ -14,5 +14,6 @@ let handler = async (m, { conn, args }) => {
 handler.help = ['link']
 handler.tags = ['group']
 handler.command = ['link', 'linkgroup']
+handler.desc = 'Get the group link'
 
 export default handler
